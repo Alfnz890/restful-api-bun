@@ -21,6 +21,10 @@ export const AuthController = {
       if (!token) return c.json({ message: "error" })
 
       return c.json({ message: "Login success", token }, 200)
+   },
+
+   async logout(c: Context) {
+      return c.json({ message: "Logout success" })
    }
 
 }

@@ -2,20 +2,30 @@ import { userSchema } from "../validators/user.validator";
 import { Context } from "hono";
 import { UserModel } from "../models/user.model";
 import { hashPassword } from "../utils/hash.utils";
+import logger from "../utils/logger.utilss";
 
 export const UserController = {
 
    async getAllUser(c: Context) {
-      const users = await UserModel.getAllUsers();
-      return c.json({ success: true, data: users }, 200);
+      try {
+         const users = await UserModel.getAllUsers();
+         logger.info(`Fetched ${users.length} users`)
+         return c.json({ success: true, data: users }, 200);
+      } catch (error) {
+         return c.json({ success: false, message: "Internal server error" }, 500);
+      }
    },
 
    async register(c: Context) {
-
       try {
          const body = await c.req.json();
+         logger.info("Received user registration request")
+
          const parse = userSchema.safeParse(body);
-         if (!parse.success) return c.json({ error: parse.error.errors }, 400)
+         if (!parse.success) {
+            logger.warn(`Validation failed: ${JSON.stringify(parse.error.format())}`)
+            return c.json({ error: parse.error.errors }, 400)
+         }
 
          const existingEmail = await UserModel.getUserByIdOrEmail(body.id, body.email)
          if (existingEmail) return c.json({ error: "Email already exist!" }, 400)
@@ -23,12 +33,13 @@ export const UserController = {
          const hashedPassword = await hashPassword(body.password)
          const newUser = await UserModel.registerUser(body.username, hashedPassword, body.email)
 
-         return c.json({ message: "User has been created!", newUser }, 201)
+         logger.info(`User registration successfully: Id ${newUser.id}, Username: ${newUser.username}, Email: ${newUser.email}`)
+         return c.json({ message: "User has been created!" }, 201)
+
       } catch (error) {
          console.log("Failed to create user:", error)
          return c.json({ success: false, message: "Internal server error!" }, 500)
       }
-
    },
 
    async getUserById(c: Context) {
@@ -43,7 +54,6 @@ export const UserController = {
    },
 
    async updateUser(c: Context) {
-
       try {
          const id = Number(c.req.param("id"))
          const body = await c.req.json();
@@ -69,7 +79,6 @@ export const UserController = {
          console.log("Error updating user:", error)
          return c.json({ success: false, message: "Internal server error!" }, 500)
       }
-
    },
 
    async deleteUser(c: Context) {
